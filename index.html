@@ -1,0 +1,237 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lens Image Formation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f8ff;
+      overflow: hidden; /* Disable scrolling */
+      height: 100vh; /* Prevent page from scrolling */
+    }
+
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 0;
+      font-size: 24px;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: #333;
+      color: white;
+      padding: 10px 0;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    #canvas {
+      border: 2px solid #333;
+      margin-top: 50px;
+      background-color: #ffffff;
+      position: relative;
+      width: 100%;
+      height: 400px;
+      touch-action: none;
+    }
+
+    .line {
+      stroke: #000;
+      stroke-width: 2;
+    }
+
+    #object, #image {
+      width: 10px; /* Reduced width for thinner object */
+      height: 80px; /* Reduced height for thinner object */
+      position: absolute;
+      cursor: pointer;
+    }
+
+    #object {
+      background-color: red;
+      bottom: 195px;
+    }
+
+    #image {
+      background-color: blue;
+      top: 195px;
+    }
+
+    .axis-label {
+      position: absolute;
+      font-size: 16px;
+      top: 10px;
+    }
+
+    .center-label, .focus-label {
+      position: absolute;
+      font-size: 14px;
+      top: 220px;
+    }
+
+    .focus-label {
+      font-size: 14px;
+      top: 220px;
+    }
+
+    .zoomed {
+      transition: width 0.3s, height 0.3s;
+    }
+
+    .lens-arc {
+      fill: none;
+      stroke: black;
+      stroke-width: 2;
+    }
+
+    .copyright {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    Convex Lens Image Formation
+  </header>
+
+  <p>Use touch or mouse to move the object along the X-axis</p>
+
+  <div id="canvas">
+    <svg width="100%" height="100%">
+      <!-- X-axis and Y-axis -->
+      <line x1="0" y1="200" x2="100%" y2="200" class="line" id="xAxis" />
+      <line x1="50%" y1="0" x2="50%" y2="100%" class="line" id="yAxis" />
+      
+      <!-- F1, F2, C1, C2 (Flipped C and F) -->
+      <circle cx="37.5%" cy="200" r="10" stroke="black" stroke-width="3" fill="green" />
+      <circle cx="62.5%" cy="200" r="10" stroke="black" stroke-width="3" fill="green" />
+      <circle cx="25%" cy="200" r="5" stroke="black" stroke-width="2" fill="red" />
+      <circle cx="75%" cy="200" r="5" stroke="black" stroke-width="2" fill="red" />
+
+      <!-- Arc representing lens curvature -->
+      <path class="lens-arc" d="M 25% 200 A 20 20 0 0 1 37.5% 200" />
+      <path class="lens-arc" d="M 62.5% 200 A 20 20 0 0 0 75% 200" />
+
+    </svg>
+    <div id="object"></div>
+    <div id="image" class="zoomed"></div>
+
+    <!-- C1, C2, F1, F2 Labels (Labels swapped) -->
+    <div class="center-label" style="left: 25%;">F1</div>
+    <div class="center-label" style="left: 75%;">F2</div>
+    <div class="focus-label" style="left: 37.5%;">C1</div>
+    <div class="focus-label" style="left: 62.5%;">C2</div>
+
+    <!-- Rays: Parallel to the axis and going through the center -->
+    <line id="ray1" x1="40%" y1="200" x2="37.5%" y2="200" stroke="orange" stroke-width="2" />
+    <line id="ray2" x1="40%" y1="200" x2="50%" y2="50%" stroke="orange" stroke-width="2" />
+    <circle id="intersection" cx="50%" cy="200" r="5" stroke="black" stroke-width="2" fill="blue" />
+
+    <!-- Line from Object's Top to (0,0) -->
+    <line id="objectToOrigin" x1="40%" y1="100" x2="50%" y2="0" stroke="red" stroke-width="2" />
+  </div>
+
+  <footer>
+    © Copyright Not Out, Selim
+  </footer>
+
+  <script>
+    const object = document.getElementById("object");
+    const image = document.getElementById("image");
+    const canvas = document.getElementById("canvas");
+    const ray1 = document.getElementById("ray1");
+    const ray2 = document.getElementById("ray2");
+    const intersection = document.getElementById("intersection");
+    const objectToOrigin = document.getElementById("objectToOrigin");
+
+    const canvasWidth = canvas.clientWidth;
+
+    let objectPosition = canvasWidth / 2;
+    object.style.left = `${objectPosition - 5}px`;
+
+    // Lens parameters (in terms of percentage of canvas width) - C and F swapped
+    const F1 = 0.25 * canvasWidth;
+    const F2 = 0.75 * canvasWidth;
+    const C1 = 0.375 * canvasWidth;
+    const C2 = 0.625 * canvasWidth;
+
+    function updateImagePosition() {
+      const objectDistance = objectPosition - F1;
+
+      // Using lens formula: 1/f = 1/v - 1/u
+      const focalLength = F2 - C2;
+
+      const imageDistance = 1 / ((1 / focalLength) - (1 / -objectDistance));
+
+      const imagePosition = F2 + imageDistance;
+
+      image.style.left = `${imagePosition - 5}px`;
+
+      const magnification = imageDistance / objectDistance;
+      image.style.width = `${10 * magnification}px`;  // Reduced size of the image
+      image.style.height = `${80 * magnification}px`; // Reduced size of the image
+
+      // Flip the image vertically if it's inverted
+      if (imageDistance > 0) {
+        image.style.transform = 'scaleY(1)';
+        image.style.top = '250px'; // Place above X-axis
+      } else {
+        image.style.transform = 'scaleY(-1)';
+        image.style.top = '150px'; // Place below X-axis
+      }
+
+      // Make sure the image stays aligned with X-axis
+      image.style.top = '195px'; // Keep image exactly on X-axis for correct alignment
+
+      ray1.setAttribute("x2", imagePosition);
+      ray2.setAttribute("x2", imagePosition);
+      intersection.setAttribute("cx", imagePosition);
+
+      // Update the red line from object to origin
+      objectToOrigin.setAttribute("x1", objectPosition);
+      objectToOrigin.setAttribute("y1", 100); // Set the y-coordinate for the top of the object
+    }
+
+    function onMove(event) {
+      const rect = canvas.getBoundingClientRect();
+      const offsetX = event.clientX - rect.left;
+
+      // Restrict object to not move beyond the focal point F1 (negative direction only)
+      objectPosition = Math.max(offsetX, F1);
+      object.style.left = `${objectPosition - 5}px`;
+      object.style.bottom = '195px'; // Keep object exactly on the top of X-axis
+      updateImagePosition();
+    }
+
+    canvas.addEventListener("touchmove", (event) => {
+      event.preventDefault();
+      const touch = event.touches[0];
+      onMove(touch);
+    });
+
+    canvas.addEventListener("mousemove", (event) => {
+      if (event.target === canvas || event.target === object) {
+        onMove(event);
+      }
+    });
+  </script>
+
+</body>
+</html><script>function myFunction() {
+  alert("Button Clicked")
+}</script>
